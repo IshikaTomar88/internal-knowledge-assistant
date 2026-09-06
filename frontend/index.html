@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internal Knowledge Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1B1E2A;
+    --slate: #4A5165;
+    --line: #E3E5EC;
+    --paper: #FAFAFB;
+    --indigo: #3F3DA8;
+    --indigo-soft: #EFEEFA;
+    --amber: #B8863A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', sans-serif; background: var(--paper); color: var(--ink); }
+  .serif { font-family: 'Fraunces', serif; }
+
+  .shell { max-width: 760px; margin: 0 auto; padding: 60px 24px 100px; }
+
+  .top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 40px; }
+  .top .mark { font-family: 'Fraunces', serif; font-weight: 600; font-size: 1.4rem; }
+  .top .mark span { color: var(--indigo); }
+  .top .tag { font-size: 0.82rem; color: var(--slate); }
+
+  h1.serif { font-size: 2.1rem; font-weight: 500; line-height: 1.2; margin: 0 0 10px; }
+  .lede { color: var(--slate); font-size: 1rem; max-width: 480px; line-height: 1.6; margin-bottom: 36px; }
+
+  /* Upload zone */
+  #dropzone {
+    border: 1.5px dashed var(--line);
+    border-radius: 10px;
+    padding: 28px;
+    text-align: center;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  #dropzone.drag { border-color: var(--indigo); background: var(--indigo-soft); }
+  #dropzone p { margin: 4px 0; font-size: 0.92rem; color: var(--slate); }
+  #dropzone .browse { color: var(--indigo); font-weight: 600; text-decoration: underline; }
+  #file-input { display: none; }
+
+  #doc-list { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .doc-chip {
+    background: var(--indigo-soft);
+    color: var(--indigo);
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+    animation: pop 0.2s ease;
+  }
+  @keyframes pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+  /* Ask bar */
+  #ask-row { display: flex; gap: 10px; margin: 30px 0 6px; }
+  #question {
+    flex: 1;
+    padding: 13px 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    background: #fff;
+  }
+  #question:focus { border-color: var(--indigo); }
+  #ask-btn {
+    padding: 0 22px;
+    background: var(--indigo);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  #ask-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .hint { font-size: 0.78rem; color: #8A90A3; margin-bottom: 30px; }
+
+  /* Answer thread */
+  #thread { display: flex; flex-direction: column; gap: 26px; }
+  .entry { animation: rise 0.22s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .entry .q { font-weight: 600; font-size: 0.98rem; margin-bottom: 10px; }
+  .entry .a {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--indigo);
+    border-radius: 6px;
+    padding: 16px 18px;
+    font-size: 0.93rem;
+    line-height: 1.65;
+  }
+  .entry .a.miss { border-left-color: var(--amber); color: #6B5629; background: #FBF6ED; }
+
+  .sources { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .source-item {
+    font-size: 0.78rem;
+    color: var(--slate);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 11px;
+  }
+  .source-item b { color: var(--indigo); font-weight: 600; }
+
+  .loading-row { display: flex; align-items: center; gap: 8px; color: var(--slate); font-size: 0.88rem; }
+  .spin {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid var(--line); border-top-color: var(--indigo);
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="top">
+    <div class="mark">Internal<span>KB</span></div>
+    <div class="tag">Company internal knowledge search — demo</div>
+  </div>
+
+  <h1 class="serif">Ask questions, get answers only from your own documents.</h1>
+  <p class="lede">Upload a policy, contract, or manual. Every answer is grounded in the actual text — with the page it came from — and if the document doesn't cover something, it says so instead of guessing.</p>
+
+  <div id="dropzone" onclick="document.getElementById('file-input').click()">
+    <p><span class="browse">Choose a PDF</span> or drag one here</p>
+    <p style="font-size:0.78rem; color:#9096A8;">Public policy docs, manuals, or T&amp;Cs work well for a demo</p>
+    <input type="file" id="file-input" accept="application/pdf" onchange="handleFile(this.files[0])">
+  </div>
+  <div id="doc-list"></div>
+
+  <div id="ask-row">
+    <input id="question" placeholder="Ask something about the uploaded document..." onkeydown="if(event.key==='Enter') ask()" disabled>
+    <button id="ask-btn" onclick="ask()" disabled>Ask</button>
+  </div>
+  <div class="hint">Try a question the document clearly answers, then one it doesn't — watch how the second one responds.</div>
+
+  <div id="thread"></div>
+</div>
+
+<script>
+const API_BASE = "http://localhost:8000";
+let docsIndexed = 0;
+
+const dropzone = document.getElementById('dropzone');
+['dragover', 'dragleave', 'drop'].forEach(evt => {
+  dropzone.addEventListener(evt, e => {
+    e.preventDefault();
+    if (evt === 'dragover') dropzone.classList.add('drag');
+    if (evt === 'dragleave' || evt === 'drop') dropzone.classList.remove('drag');
+    if (evt === 'drop' && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+});
+
+async function handleFile(file) {
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+
+  const chip = document.createElement('div');
+  chip.className = 'doc-chip';
+  chip.textContent = `Indexing ${file.name}...`;
+  document.getElementById('doc-list').appendChild(chip);
+
+  try {
+    const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: form });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
+    const data = await res.json();
+    chip.textContent = `📄 ${data.filename} — ${data.chunks_added} chunks`;
+    docsIndexed++;
+    document.getElementById('question').disabled = false;
+    document.getElementById('ask-btn').disabled = false;
+  } catch (err) {
+    chip.textContent = `Failed: ${file.name}`;
+    chip.style.background = '#FBEAEA';
+    chip.style.color = '#B0392F';
+  }
+}
+
+async function ask() {
+  const input = document.getElementById('question');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+
+  const thread = document.getElementById('thread');
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.innerHTML = `<div class="q">${escapeHtml(q)}</div><div class="loading-row"><div class="spin"></div> Searching the document...</div>`;
+  thread.prepend(entry);
+
+  try {
+    const res = await fetch(`${API_BASE}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q }),
+    });
+    const data = await res.json();
+    const isMiss = !data.sources || data.sources.length === 0;
+
+    let sourcesHtml = '';
+    if (!isMiss) {
+      sourcesHtml = '<div class="sources">' + data.sources.map(s =>
+        `<div class="source-item"><b>${escapeHtml(s.source)}${s.page ? ', p.' + s.page : ''}</b> — "${escapeHtml(s.excerpt)}..."</div>`
+      ).join('') + '</div>';
+    }
+
+    entry.innerHTML = `
+      <div class="q">${escapeHtml(q)}</div>
+      <div class="a ${isMiss ? 'miss' : ''}">${escapeHtml(data.answer)}</div>
+      ${sourcesHtml}
+    `;
+  } catch (err) {
+    entry.innerHTML = `<div class="q">${escapeHtml(q)}</div><div class="a miss">Couldn't reach the backend — is it running on ${API_BASE}?</div>`;
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+
+</body>
+</html>
