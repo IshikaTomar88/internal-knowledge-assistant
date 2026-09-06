@@ -147,7 +147,10 @@
 </div>
 
 <script>
-const API_BASE = "http://localhost:8000";
+// ==========================================
+// LIVE RENDER BACKEND URL (UPDATE THIS)
+// ==========================================
+const API_BASE = "https://your-backend-service.onrender.com";
 let docsIndexed = 0;
 
 const dropzone = document.getElementById('dropzone');
@@ -219,7 +222,7 @@ async function ask() {
       ${sourcesHtml}
     `;
   } catch (err) {
-    entry.innerHTML = `<div class="q">${escapeHtml(q)}</div><div class="a miss">Couldn't reach the backend — is it running on ${API_BASE}?</div>`;
+    entry.innerHTML = `<div class="q">${escapeHtml(q)}</div><div class="a miss">Couldn't reach the backend — check your Render URL configuration.</div>`;
   }
 }
 
